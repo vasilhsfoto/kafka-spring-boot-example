@@ -1,8 +1,10 @@
 package io.tpd.kafkaexample;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,12 +14,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.*;
+import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @SpringBootApplication
 public class KafkaExampleApplication {
@@ -46,46 +50,55 @@ public class KafkaExampleApplication {
     }
 
     @Bean
-    public ProducerFactory<String, Object> producerFactory() {
+    public ProducerFactory<String, PracticalAdvice> producerFactory() {
         return new DefaultKafkaProducerFactory<>(producerConfigs());
     }
 
     @Bean
-    public KafkaTemplate<String, Object> kafkaTemplate() {
+    public KafkaTemplate<String, PracticalAdvice> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
     @Bean
     public NewTopic adviceTopic() {
-        return new NewTopic(topicName, 3, (short) 1);
+        return TopicBuilder.name(topicName)
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 
     // Consumer configuration
 
     // If you only need one kind of deserialization, you only need to set the
     // Consumer configuration properties. Uncomment this and remove all others below.
-//    @Bean
-//    public Map<String, Object> consumerConfigs() {
-//        Map<String, Object> props = new HashMap<>(
-//                kafkaProperties.buildConsumerProperties()
-//        );
-//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-//                StringDeserializer.class);
-//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-//                JsonDeserializer.class);
-//        props.put(ConsumerConfig.GROUP_ID_CONFIG,
-//                "tpd-loggers");
-//
-//        return props;
-//    }
+/*
+    @Bean
+    public Map<String, Object> consumerConfigs() {
+        Map<String, Object> props = new HashMap<>(
+                kafkaProperties.buildConsumerProperties()
+        );
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                JsonDeserializer.class);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG,
+                "tpd-loggers");
+
+        return props;
+    }
+*/
 
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         final JsonDeserializer<Object> jsonDeserializer = new JsonDeserializer<>();
         jsonDeserializer.addTrustedPackages("*");
-        return new DefaultKafkaConsumerFactory<>(
-                kafkaProperties.buildConsumerProperties(), new StringDeserializer(), jsonDeserializer
+
+        var cf = new DefaultKafkaConsumerFactory<>(
+                kafkaProperties.buildConsumerProperties(),
+                new StringDeserializer(),
+                jsonDeserializer
         );
+        return cf;
     }
 
     @Bean
@@ -93,12 +106,13 @@ public class KafkaExampleApplication {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-
+        factory.setConcurrency(10);
         return factory;
     }
 
     // String Consumer Configuration
 
+/*
     @Bean
     public ConsumerFactory<String, String> stringConsumerFactory() {
         return new DefaultKafkaConsumerFactory<>(
@@ -131,4 +145,5 @@ public class KafkaExampleApplication {
         factory.setConsumerFactory(byteArrayConsumerFactory());
         return factory;
     }
+*/
 }

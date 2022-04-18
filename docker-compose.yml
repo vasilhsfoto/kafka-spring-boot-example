@@ -3,12 +3,31 @@ services:
   zookeeper:
     image: wurstmeister/zookeeper
     ports:
-    - "2181:2181"
+      - "2181:2181"
   kafka:
     image: wurstmeister/kafka
     ports:
-    - "9092:9092"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
+      KAFKA_BROKER_ID: 0
+      KAFKA_LISTENERS: INTERNAL_LISTENER://0.0.0.0:9093,EXTERNAL_LISTENER://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL_LISTENER://kafka:9093,EXTERNAL_LISTENER://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL_LISTENER:PLAINTEXT,EXTERNAL_LISTENER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL_LISTENER
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      #      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+
